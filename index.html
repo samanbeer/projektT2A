@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="files/favicon.png">
-    
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=12">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a1a1a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,7 +15,10 @@
 <body>
 
     <div id="loader-overlay">
-        <div class="loader-spinner"></div>
+        <div class="loader-content">
+            <div class="loader-spinner"></div>
+            <div id="loader-text" class="loader-text">Načítám...</div>
+        </div>
     </div>
 
     <div class="settings-container">
@@ -25,6 +27,8 @@
         </button>
         <div id="settings-menu" class="settings-menu">
             <button id="import-history-btn">Importovat Historii (Firefox JSON)</button>
+            <button id="force-update-btn" style="color: #4CAF50;">↻ Zkontrolovat aktualizace</button>
+            
             <div id="import-progress-container" class="import-progress-container" style="display: none;">
                 <div class="import-progress-bar"></div>
             </div>
@@ -34,7 +38,6 @@
     <input type="file" id="history-file-input" accept=".json" style="display: none;">
 
     <div class="main-container">
-
         <div class="top-row">
             <div class="widget time-date-widget">
                 <div class="clock-section">
@@ -44,7 +47,6 @@
                     </div>
                     <div id="current-date" class="date-display"></div>
                 </div>
-
                 <div class="weather-section">
                     <div class="weather-loading">Načítám...</div>
                     <div id="weather-content" class="weather-content" style="display: none;">
@@ -70,7 +72,6 @@
         </div>
 
         <div class="dashboard-grid">
-            
             <div class="grid-column">
                 <div class="widget server-status-widget">
                     <div class="widget-header">
@@ -83,7 +84,6 @@
 
             <div class="search-section">
                 <div class="widget search-widget">
-                    
                     <div class="search-header">
                         <svg class="google-icon" viewBox="0 0 24 24" width="24px" height="24px">
                             <path fill="#4285F4" d="M23.745 12.27c0-.79-.07-1.54-.19-2.27h-11.3v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
@@ -91,7 +91,6 @@
                             <path fill="#FBBC05" d="M5.525 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62h-3.98a11.86 11.86 0 000 10.76l3.98-3.09z"/>
                             <path fill="#EA4335" d="M12.255 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C18.205 1.19 15.495 0 12.255 0 7.565 0 3.515 2.7 1.545 7.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
                         </svg>
-                        
                         <form id="search-form" action="https://www.google.com/search" method="GET" target="_self" class="search-form">
                             <input type="text" id="search-input" name="q" class="search-input" placeholder="Hledat na Googlu..." autocomplete="off" required>
                             <button type="submit" class="search-btn">
@@ -100,7 +99,6 @@
                             <div id="search-suggestions" class="search-suggestions"></div>
                         </form>
                     </div>
-
                     <div class="bookmarks-section">
                         <div class="bookmarks-header-row">
                             <span class="bookmarks-label">Oblíbené</span>
@@ -108,7 +106,6 @@
                         </div>
                         <div id="bookmarks-grid" class="bookmarks-grid"></div>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -121,7 +118,7 @@
             <form id="add-server-form">
                 <input type="hidden" id="edit-original-url">
                 <input type="text" id="server-name" placeholder="Název" required>
-                <input type="url" id="server-url" placeholder="URL (např. https://moje.domena)" required>
+                <input type="url" id="server-url" placeholder="URL" required>
                 <div class="form-group-checkbox">
                     <input type="checkbox" id="server-cloudflare">
                     <label for="server-cloudflare">Server přes Cloudflare Tunnel</label>
@@ -136,25 +133,18 @@
             <span class="close-btn bookmark-close">&times;</span>
             <h3>Přidat záložku</h3>
             <form id="add-bookmark-form">
-                <input type="text" id="bookmark-url" placeholder="URL (např. facebook.com)" required>
+                <input type="text" id="bookmark-url" placeholder="URL" required>
                 <input type="text" id="bookmark-name" placeholder="Název">
                 <button type="submit" class="action-button">Přidat</button>
             </form>
         </div>
     </div>
 
-    <script src="script.js?v=10"></script>
-    
+    <script src="script.js?v=12"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registrován: ', registration.scope);
-                    })
-                    .catch(err => {
-                        console.log('ServiceWorker chyba: ', err);
-                    });
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW chyba:', err));
             });
         }
     </script>
