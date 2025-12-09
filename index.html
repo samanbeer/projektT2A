@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="files/favicon.png">
+    
+    <link rel="stylesheet" href="style.css?v=10">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+
+    <div id="loader-overlay">
+        <div class="loader-spinner"></div>
+    </div>
+
+    <div class="settings-container">
+        <button id="settings-btn" class="settings-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+        <div id="settings-menu" class="settings-menu">
+            <button id="import-history-btn">Importovat Historii (Firefox JSON)</button>
+            <div id="import-progress-container" class="import-progress-container" style="display: none;">
+                <div class="import-progress-bar"></div>
+            </div>
+            <div id="import-status" style="font-size: 0.8em; color: #aaaaaa; margin-top: 5px;"></div>
+        </div>
+    </div>
+    <input type="file" id="history-file-input" accept=".json" style="display: none;">
+
+    <div class="main-container">
+
+        <div class="top-row">
+            <div class="widget time-date-widget">
+                <div class="clock-section">
+                    <div class="time-wrapper">
+                        <div id="current-time" class="time-display"></div>
+                        <div id="current-seconds" class="seconds-display"></div>
+                    </div>
+                    <div id="current-date" class="date-display"></div>
+                </div>
+
+                <div class="weather-section">
+                    <div class="weather-loading">Načítám...</div>
+                    <div id="weather-content" class="weather-content" style="display: none;">
+                        <img id="weather-icon" src="" alt="Počasí" class="weather-icon">
+                        <div class="weather-info">
+                            <div class="weather-location">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                Kopřivnice
+                            </div>
+                            <div class="weather-main-line">
+                                <div id="weather-temp" class="weather-temp">--°C</div>
+                            </div>
+                            <div id="weather-desc" class="weather-desc">--</div>
+                            <div class="weather-details">
+                                <span id="weather-humidity">💧 --%</span>
+                                <span style="margin: 0 5px; opacity: 0.3;">|</span>
+                                <span id="weather-aqi">🍃 AQI --</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            
+            <div class="grid-column">
+                <div class="widget server-status-widget">
+                    <div class="widget-header">
+                        <h2>Server Status</h2>
+                        <button id="add-server-btn" class="add-btn">+</button>
+                    </div>
+                    <div id="server-list" class="server-list"></div>
+                </div>
+            </div>
+
+            <div class="search-section">
+                <div class="widget search-widget">
+                    
+                    <div class="search-header">
+                        <svg class="google-icon" viewBox="0 0 24 24" width="24px" height="24px">
+                            <path fill="#4285F4" d="M23.745 12.27c0-.79-.07-1.54-.19-2.27h-11.3v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+                            <path fill="#34A853" d="M12.255 24c3.24 0 5.95-1.08 7.96-2.91l-3.86-3c-1.08.72-2.45 1.16-4.1 1.16-3.13 0-5.78-2.11-6.73-4.96h-3.98v3.09C3.515 21.3 7.565 24 12.255 24z"/>
+                            <path fill="#FBBC05" d="M5.525 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62h-3.98a11.86 11.86 0 000 10.76l3.98-3.09z"/>
+                            <path fill="#EA4335" d="M12.255 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C18.205 1.19 15.495 0 12.255 0 7.565 0 3.515 2.7 1.545 7.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
+                        </svg>
+                        
+                        <form id="search-form" action="https://www.google.com/search" method="GET" target="_self" class="search-form">
+                            <input type="text" id="search-input" name="q" class="search-input" placeholder="Hledat na Googlu..." autocomplete="off" required>
+                            <button type="submit" class="search-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </button>
+                            <div id="search-suggestions" class="search-suggestions"></div>
+                        </form>
+                    </div>
+
+                    <div class="bookmarks-section">
+                        <div class="bookmarks-header-row">
+                            <span class="bookmarks-label">Oblíbené</span>
+                            <button id="add-bookmark-btn" class="add-bookmark-btn">+ Přidat</button>
+                        </div>
+                        <div id="bookmarks-grid" class="bookmarks-grid"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-server-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn server-close">&times;</span>
+            <h3 id="modal-title">Přidat nový server</h3>
+            <form id="add-server-form">
+                <input type="hidden" id="edit-original-url">
+                <input type="text" id="server-name" placeholder="Název" required>
+                <input type="url" id="server-url" placeholder="URL (např. https://moje.domena)" required>
+                <div class="form-group-checkbox">
+                    <input type="checkbox" id="server-cloudflare">
+                    <label for="server-cloudflare">Server přes Cloudflare Tunnel</label>
+                </div>
+                <button type="submit" class="action-button">Uložit</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="add-bookmark-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn bookmark-close">&times;</span>
+            <h3>Přidat záložku</h3>
+            <form id="add-bookmark-form">
+                <input type="text" id="bookmark-url" placeholder="URL (např. facebook.com)" required>
+                <input type="text" id="bookmark-name" placeholder="Název">
+                <button type="submit" class="action-button">Přidat</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js?v=10"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registrován: ', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker chyba: ', err);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
