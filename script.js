@@ -1,105 +1,69 @@
 // =========================================================================
-// --- 1. START APLIKACE (INSTALACE vs BĚŽNÝ START) ---
+// --- 1. START APLIKACE ---
 // =========================================================================
-
 document.addEventListener('DOMContentLoaded', () => {
     const loader = document.getElementById("loader-overlay");
     const loaderText = document.getElementById("loader-text");
     const searchInput = document.getElementById('search-input');
-
-    // Kontrola, zda je dashboard "nainstalován" (první spuštění)
     const isInstalled = localStorage.getItem('dashboard_v1_installed');
 
-    // Okamžitě vykreslit vše z cache
+    // Inicializace
+    initDefaults();
+    loadBackground(); // Načíst pozadí HNED
+
+    // Vykreslení
     renderServers();
     renderBookmarks();
     updateClock();
     setupEventListeners();
 
     if (!isInstalled) {
-        // --- PRVNÍ SPUŠTĚNÍ: Zobrazíme text a počkáme ---
-        if (loaderText) loaderText.textContent = "Ukládám soubory pro offline použití...";
-        
-        // Čekáme 3 sekundy (stačí pro efekt, 5s je už moc dlouho)
+        if (loaderText) loaderText.textContent = "Nastavuji výchozí prostředí...";
         setTimeout(() => {
             if (loader) {
                 loader.classList.add("loader-hidden");
                 setTimeout(() => { if(loader.parentNode) loader.parentNode.removeChild(loader); }, 500);
             }
             if (searchInput) searchInput.focus();
-            
-            // Uložíme značku, že je hotovo
             localStorage.setItem('dashboard_v1_installed', 'true');
-            
-            startNetworkTasks(); // Spustit pingy a počasí
+            startNetworkTasks();
         }, 3000); 
-
     } else {
-        // --- BĚŽNÝ START: Ihned pryč ---
         if (loader) {
             loader.classList.add("loader-hidden");
             setTimeout(() => { if(loader.parentNode) loader.parentNode.removeChild(loader); }, 300);
         }
         if (searchInput) searchInput.focus();
-        
-        // Síť spustíme hned
-        startNetworkTasks();
+        setTimeout(startNetworkTasks, 100);
     }
 });
 
+function initDefaults() {
+    if (!localStorage.getItem('servers')) {
+        const defaultServers = [
+            { name: "Google", url: "https://www.google.com/", isCloudflare: false, status: 'offline', ping: null, history: [] },
+            { name: "Frengp", url: "https://www.frengp.cz/", isCloudflare: false, status: 'offline', ping: null, history: [] }
+        ];
+        localStorage.setItem('servers', JSON.stringify(defaultServers));
+    }
+    let s = JSON.parse(localStorage.getItem('servers')) || [];
+    let updated = false;
+    s.forEach(srv => { if (!srv.history) { srv.history = []; updated = true; } });
+    if (updated) localStorage.setItem('servers', JSON.stringify(s));
+}
+
 function startNetworkTasks() {
-    // Spustíme asynchronně, aby neblokovaly UI
-    setTimeout(() => {
-        updateServerStatuses();
-        fetchWeather();
-        setInterval(updateServerStatuses, SERVER_CHECK_INTERVAL);
-        setInterval(fetchWeather, 900000);
-        setInterval(updateClock, 1000);
-    }, 100);
+    initCharts();
+    updateServerStatuses();
+    fetchWeather();
+    setInterval(updateServerStatuses, 5000);
+    setInterval(fetchWeather, 900000);
+    setInterval(updateClock, 1000);
 }
 
 // =========================================================================
-// --- UPDATE (SMAZAT CACHE A RELOAD) ---
+// --- KONFIGURACE ---
 // =========================================================================
-async function forceUpdate() {
-    if(!confirm("Stáhnout novou verzi aplikace?")) return;
-    
-    const status = document.getElementById('import-status');
-    if(status) status.textContent = "Aktualizuji...";
-
-    // 1. Odregistrovat Service Worker
-    if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (let registration of registrations) {
-            await registration.unregister();
-        }
-    }
-
-    // 2. Smazat Cache
-    if ('caches' in window) {
-        const keys = await caches.keys();
-        for (const key of keys) {
-            await caches.delete(key);
-        }
-    }
-
-    // 3. Reload ze serveru
-    location.reload(true);
-}
-
-// ... ZDE NÁSLEDUJE ZBYTEK KÓDU (proměnné, hodiny, počasí, servery, hledání) ...
-// ... VLOŽ SEM CELÝ ZBYTEK OBSAHU Z PŘEDCHOZÍHO script.js OD SEKCE "2. KONFIGURACE" ...
-// ... JEN PŘIDEJ DO setupEventListeners TOTO: ...
-
-/*
-V setupEventListeners():
-    document.getElementById('force-update-btn').onclick = forceUpdate;
-*/
-
-// =========================================================================
-// --- 2. KONFIGURACE A PROMĚNNÉ ---
-// =========================================================================
-const SERVER_CHECK_INTERVAL = 8000;
 const LAT = '49.5995'; 
 const LON = '18.1448';
 let servers = JSON.parse(localStorage.getItem('servers')) || [];
@@ -108,6 +72,49 @@ let searchHistory = JSON.parse(localStorage.getItem('search_history')) || [];
 let importedHistory = JSON.parse(localStorage.getItem('imported_history')) || [];
 const shortcuts = { "you":"https://youtube.com", "yt":"https://youtube.com", "fb":"https://facebook.com", "ig":"https://instagram.com", "gh":"https://github.com", "sz":"https://seznam.cz", "srv":"https://nofx.samot.fun" };
 let currentFocus = -1;
+const serverCharts = {};
+
+// =========================================================================
+// --- POZADÍ (BACKGROUND) ---
+// =========================================================================
+function loadBackground() {
+    const bgUrl = localStorage.getItem('custom_bg');
+    if (bgUrl && bgUrl !== 'null') { // Kontrola platnosti
+        document.body.style.backgroundImage = `url('${bgUrl}')`;
+    }
+}
+
+async function changeBackground() {
+    const btn = document.getElementById('change-bg-btn');
+    btn.textContent = "⏳ Stahuji...";
+    const newBgUrl = `https://picsum.photos/1920/1080?random=${Date.now()}`; 
+    
+    const img = new Image();
+    img.src = newBgUrl;
+    img.onload = () => {
+        document.body.style.backgroundImage = `url('${newBgUrl}')`;
+        localStorage.setItem('custom_bg', newBgUrl);
+        btn.textContent = "🖼️ Změnit tapetu (Náhodná)";
+    };
+    img.onerror = () => {
+        alert("Nepodařilo se stáhnout tapetu.");
+        btn.textContent = "🖼️ Změnit tapetu (Náhodná)";
+    };
+}
+
+function setCustomBackground() {
+    const input = document.getElementById('custom-bg-url');
+    const url = input.value.trim();
+    if(url) {
+        document.body.style.backgroundImage = `url('${url}')`;
+        localStorage.setItem('custom_bg', url);
+        input.value = '';
+    }
+}
+
+// =========================================================================
+// --- FUNKCE VYKRESLOVÁNÍ (RENDERING) ---
+// =========================================================================
 
 function updateClock() {
     const now = new Date();
@@ -119,20 +126,103 @@ function updateClock() {
 function renderServers() {
     const list = document.getElementById('server-list');
     list.innerHTML = '';
-    if (servers.length === 0) { list.innerHTML = '<p class="server-url" style="text-align: center; padding: 20px;">Žádné servery.</p>'; return; }
     
     servers.forEach((s, i) => {
-        const div = document.createElement('div'); div.className = 'server-item';
-        const ping = (s.status === 'online' && s.ping) ? `<span class="server-ping">${s.ping} ms</span>` : '';
+        const container = document.createElement('div');
+        container.className = 'server-item-container';
+        
+        const div = document.createElement('div'); 
+        div.className = 'server-item';
+        // Rozbalení grafu (OPRAVA: nyní funguje vždy)
+        div.onclick = (e) => { 
+            if(!e.target.closest('.menu-container')) toggleGraph(i); 
+        };
+
         const cfIcon = s.isCloudflare ? '<span style="font-size:0.7em; color:#f38020; margin-right:5px;" title="Cloudflare">☁️</span>' : '';
         
         div.innerHTML = `
-            <div class="server-info"><span class="server-name">${cfIcon}${s.name}</span><span class="server-url">${s.url}</span></div>
-            <div class="server-actions">${ping}<div class="status-indicator status-${s.status||'offline'}"></div>
-            <div class="menu-container"><button id="menu-btn-${i}" onclick="toggleMenu('dd-${i}', 'menu-btn-${i}')" class="menu-btn">⋮</button>
-            <div id="dd-${i}" class="dropdown-content"><button onclick="openEditModal('${s.url}')">Upravit</button><button onclick="deleteServer('${s.url}')" style="color:#ff6b6b;">Smazat</button></div></div></div>`;
-        list.appendChild(div);
+            <div class="server-info">
+                <span class="server-name">${cfIcon}${s.name}</span>
+                <span class="server-url">${s.url}</span>
+            </div>
+            <div class="server-actions">
+                <span class="server-ping" id="ping-${i}">-- ms</span>
+                <div class="status-indicator status-offline" id="status-${i}"></div>
+                <div class="menu-container">
+                    <button id="menu-btn-${i}" onclick="event.stopPropagation(); toggleMenu('dd-${i}', 'menu-btn-${i}')" class="menu-btn">⋮</button>
+                    <div id="dd-${i}" class="dropdown-content">
+                        <button onclick="openEditModal('${s.url}')">Upravit</button>
+                        <button onclick="deleteServer('${s.url}')" style="color:#ff6b6b;">Smazat</button>
+                    </div>
+                </div>
+            </div>`;
+        
+        const graphDiv = document.createElement('div');
+        graphDiv.id = `graph-container-${i}`;
+        graphDiv.className = 'server-graph-container';
+        graphDiv.innerHTML = `<canvas id="chart-${i}"></canvas>`;
+
+        container.appendChild(div);
+        container.appendChild(graphDiv);
+        list.appendChild(container);
     });
+}
+
+function initCharts() {
+    servers.forEach((s, i) => {
+        const ctx = document.getElementById(`chart-${i}`).getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 100);
+        gradient.addColorStop(0, 'rgba(0, 123, 255, 0.5)');
+        gradient.addColorStop(1, 'rgba(0, 123, 255, 0.0)');
+
+        serverCharts[i] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(s.history.length).fill(''), 
+                datasets: [{
+                    data: s.history,
+                    borderColor: '#007bff',
+                    borderWidth: 2,
+                    backgroundColor: gradient,
+                    fill: true,
+                    tension: 0.4, 
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { display: false }, 
+                    // UPRAVENÝ TOOLTIP (MENŠÍ)
+                    tooltip: { 
+                        mode: 'index', 
+                        intersect: false,
+                        bodyFont: { size: 10 },
+                        titleFont: { size: 10 },
+                        padding: 6,
+                        displayColors: false
+                    } 
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false, min: 0 } 
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+    });
+}
+
+function toggleGraph(index) {
+    const g = document.getElementById(`graph-container-${index}`);
+    // Rozbalit graf, pokud je server offline nebo má málo dat (historie vždy existuje)
+    g.classList.toggle('expanded');
 }
 
 function renderBookmarks() {
@@ -146,6 +236,10 @@ function renderBookmarks() {
     });
 }
 
+// =========================================================================
+// --- SÍŤOVÉ FUNKCE ---
+// =========================================================================
+
 function getIconFromWmoCode(c) {
     if(c===0)return 2;if(c===1)return 3;if(c===2)return 4;if(c===3)return 7;if(c>=45&&c<=48)return 12;
     if(c>=51&&c<=67)return 14;if(c>=71&&c<=77)return 21;if(c>=80&&c<=82)return 13;if(c>=85&&c<=86)return 23;if(c>=95)return 30;return 7;
@@ -154,7 +248,7 @@ function getIconFromWmoCode(c) {
 async function fetchWeather() {
     try {
         const [wRes, aRes] = await Promise.all([
-            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`),
+            fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`),
             fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${LAT}&longitude=${LON}&current=us_aqi`)
         ]);
         const wData = await wRes.json(); const aData = await aRes.json();
@@ -166,25 +260,82 @@ async function fetchWeather() {
         document.getElementById('weather-aqi').textContent = `🍃 AQI ${aData.current.us_aqi}`;
         document.querySelector('.weather-loading').style.display = 'none';
         document.getElementById('weather-content').style.display = 'flex';
+
+        const forecastDiv = document.getElementById('weather-forecast');
+        forecastDiv.innerHTML = '';
+        for(let i=1; i<=3; i++) {
+            const dayCode = wData.daily.weather_code[i];
+            const maxT = Math.round(wData.daily.temperature_2m_max[i]);
+            const minT = Math.round(wData.daily.temperature_2m_min[i]);
+            const date = new Date(wData.daily.time[i]);
+            const dayName = date.toLocaleDateString('cs-CZ', {weekday: 'short'});
+            
+            const item = document.createElement('div');
+            item.className = 'forecast-day';
+            item.innerHTML = `
+                <div class="f-day">${dayName}</div>
+                <img src="https://www.meteosource.com/static/img/ico/weather/${getIconFromWmoCode(dayCode)}.svg" class="f-icon">
+                <div class="f-temp">${maxT}° / ${minT}°</div>
+            `;
+            forecastDiv.appendChild(item);
+        }
+
     } catch(e) { console.error(e); }
 }
 
-async function checkServerStatus(s) {
+async function checkServerStatus(s, index) {
     const start = Date.now();
+    let currentPing = null;
+    let isOnline = false;
+
     if (s.isCloudflare) {
-        return new Promise((resolve) => {
+        await new Promise((resolve) => {
             const img = new Image();
             img.src = `${s.url.replace(/\/$/, '')}/favicon.ico?t=${Date.now()}`;
-            img.onload = () => { s.status='online'; s.ping=Date.now()-start; resolve(); };
-            img.onerror = () => { s.status='offline'; s.ping=null; resolve(); };
-            setTimeout(() => { if(!img.complete) { s.status='offline'; img.src=""; resolve(); } }, 5000);
+            img.onload = () => { isOnline=true; currentPing=Date.now()-start; resolve(); };
+            img.onerror = () => { isOnline=false; resolve(); };
+            setTimeout(() => { if(!img.complete) { isOnline=false; img.src=""; resolve(); } }, 5000);
         });
     } else {
-        try { await fetch(s.url, { method:'GET', mode:'no-cors', cache:'no-store', signal:AbortSignal.timeout(5000) }); s.status='online'; s.ping=Date.now()-start; }
-        catch { s.status='offline'; s.ping=null; }
+        try { 
+            await fetch(s.url, { method:'GET', mode:'no-cors', cache:'no-store', signal:AbortSignal.timeout(5000) }); 
+            isOnline=true; currentPing=Date.now()-start; 
+        } 
+        catch { isOnline=false; }
+    }
+
+    s.status = isOnline ? 'online' : 'offline';
+    s.ping = currentPing;
+    const nowTime = new Date().toLocaleTimeString(); 
+
+    if (!s.history) s.history = [];
+    s.history.push(currentPing || 0); 
+    if (s.history.length > 30) s.history.shift();
+
+    const pingEl = document.getElementById(`ping-${index}`);
+    const statusEl = document.getElementById(`status-${index}`);
+    
+    if (pingEl) pingEl.textContent = isOnline ? `${currentPing} ms` : '';
+    if (statusEl) {
+        statusEl.className = `status-indicator status-${s.status}`;
+    }
+
+    if (serverCharts[index]) {
+        serverCharts[index].data.labels.push(nowTime);
+        if (serverCharts[index].data.labels.length > 30) serverCharts[index].data.labels.shift();
+        serverCharts[index].data.datasets[0].data = s.history; 
+        serverCharts[index].update('none'); 
     }
 }
-async function updateServerStatuses() { await Promise.all(servers.map(checkServerStatus)); localStorage.setItem('servers', JSON.stringify(servers)); renderServers(); }
+
+async function updateServerStatuses() { 
+    await Promise.all(servers.map((s, i) => checkServerStatus(s, i))); 
+    localStorage.setItem('servers', JSON.stringify(servers)); 
+}
+
+// =========================================================================
+// --- GLOBÁLNÍ FUNKCE ---
+// =========================================================================
 
 window.toggleMenu = function(dropdownId, btnId) {
     document.querySelectorAll('.dropdown-content').forEach(d => { if(d.id!==dropdownId) d.classList.remove('show'); });
@@ -210,6 +361,7 @@ window.deleteServer = function(url) {
         servers = servers.filter(s => s.url !== url);
         localStorage.setItem('servers', JSON.stringify(servers));
         renderServers();
+        initCharts();
     }
 };
 
@@ -221,6 +373,24 @@ window.delBm = function(e, index) {
         renderBookmarks();
     }
 };
+
+async function forceUpdate() {
+    if(!confirm("Stáhnout novou verzi?")) return;
+    document.getElementById('import-status').textContent = "Aktualizuji...";
+    if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (let r of regs) await r.unregister();
+    }
+    if ('caches' in window) {
+        const keys = await caches.keys();
+        for (const k of keys) await caches.delete(k);
+    }
+    location.reload(true);
+}
+
+// =========================================================================
+// --- EVENT LISTENERS ---
+// =========================================================================
 
 function setupEventListeners() {
     document.getElementById('add-server-btn').onclick = () => {
@@ -249,14 +419,18 @@ function setupEventListeners() {
 
         if(orig) {
             const i = servers.findIndex(s => s.url === orig);
-            if(i !== -1) servers[i] = { name, url, isCloudflare: isCF, status: 'offline', ping: null };
+            if(i !== -1) {
+                const history = servers[i].history || [];
+                servers[i] = { name, url, isCloudflare: isCF, status: 'offline', ping: null, history: history };
+            }
         } else {
             if(servers.some(s => s.url === url)) return alert('Existuje');
-            servers.push({ name, url, isCloudflare: isCF, status: 'offline', ping: null });
+            servers.push({ name, url, isCloudflare: isCF, status: 'offline', ping: null, history: [] });
         }
         localStorage.setItem('servers', JSON.stringify(servers));
         document.getElementById('add-server-modal').style.display = 'none';
         renderServers();
+        initCharts(); 
         updateServerStatuses();
     });
 
@@ -276,9 +450,9 @@ function setupEventListeners() {
     
     settingsBtn.onclick = (e) => { e.stopPropagation(); settingsMenu.classList.toggle('show'); };
     document.getElementById('import-history-btn').onclick = () => fileInput.click();
-    
-    // TLAČÍTKO UPDATE
     document.getElementById('force-update-btn').onclick = forceUpdate;
+    document.getElementById('change-bg-btn').onclick = changeBackground;
+    document.getElementById('set-custom-bg-btn').onclick = setCustomBackground;
 
     fileInput.onchange = (e) => {
         const file = e.target.files[0]; if(!file) return;

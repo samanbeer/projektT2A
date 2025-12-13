@@ -4,21 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="icon" type="image/png" href="files/favicon.png">
-    <link rel="stylesheet" href="style.css?v=12">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="files/favicon.png">
+    
+    <link rel="preload" href="files/background.png" as="image">
+    <link rel="preload" href="style.css?v=16" as="style">
+    <link rel="preload" href="script.js?v=16" as="script">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style">
+    
+    <link rel="stylesheet" href="style.css?v=16">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <meta name="theme-color" content="#1a1a1a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+        #loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #1a1a1a; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.3s ease-out, visibility 0.3s; cursor: wait; }
+        .loader-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .loader-spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 255, 255, 0.1); border-top: 4px solid #007bff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 15px; }
+        .loader-text { color: #888; font-family: sans-serif; font-size: 0.9em; animation: pulse 1.5s infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+    </style>
 </head>
 <body>
 
     <div id="loader-overlay">
-        <div class="loader-content">
-            <div class="loader-spinner"></div>
-            <div id="loader-text" class="loader-text">Načítám...</div>
-        </div>
+        <div class="loader-spinner"></div>
+        <div id="loader-text" class="loader-text"></div>
     </div>
 
     <div class="settings-container">
@@ -26,8 +43,15 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         </button>
         <div id="settings-menu" class="settings-menu">
-            <button id="import-history-btn">Importovat Historii (Firefox JSON)</button>
-            <button id="force-update-btn" style="color: #4CAF50;">↻ Zkontrolovat aktualizace</button>
+            <button id="import-history-btn">Importovat Historii</button>
+            <button id="change-bg-btn">🖼️ Změnit tapetu (Náhodná)</button>
+            
+            <div class="custom-bg-input-wrapper">
+                <input type="text" id="custom-bg-url" placeholder="Vlastní URL tapety..." class="settings-input">
+                <button id="set-custom-bg-btn" class="settings-action-btn">✔</button>
+            </div>
+
+            <button id="force-update-btn" style="color: #4CAF50; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 5px;">↻ Zkontrolovat aktualizace</button>
             
             <div id="import-progress-container" class="import-progress-container" style="display: none;">
                 <div class="import-progress-bar"></div>
@@ -38,6 +62,7 @@
     <input type="file" id="history-file-input" accept=".json" style="display: none;">
 
     <div class="main-container">
+
         <div class="top-row">
             <div class="widget time-date-widget">
                 <div class="clock-section">
@@ -47,7 +72,8 @@
                     </div>
                     <div id="current-date" class="date-display"></div>
                 </div>
-                <div class="weather-section">
+
+                <div class="weather-section" id="weather-widget-container">
                     <div class="weather-loading">Načítám...</div>
                     <div id="weather-content" class="weather-content" style="display: none;">
                         <img id="weather-icon" src="" alt="Počasí" class="weather-icon">
@@ -67,11 +93,13 @@
                             </div>
                         </div>
                     </div>
+                    <div id="weather-forecast" class="weather-forecast"></div>
                 </div>
             </div>
         </div>
 
         <div class="dashboard-grid">
+            
             <div class="grid-column">
                 <div class="widget server-status-widget">
                     <div class="widget-header">
@@ -84,6 +112,7 @@
 
             <div class="search-section">
                 <div class="widget search-widget">
+                    
                     <div class="search-header">
                         <svg class="google-icon" viewBox="0 0 24 24" width="24px" height="24px">
                             <path fill="#4285F4" d="M23.745 12.27c0-.79-.07-1.54-.19-2.27h-11.3v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
@@ -91,14 +120,16 @@
                             <path fill="#FBBC05" d="M5.525 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62h-3.98a11.86 11.86 0 000 10.76l3.98-3.09z"/>
                             <path fill="#EA4335" d="M12.255 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C18.205 1.19 15.495 0 12.255 0 7.565 0 3.515 2.7 1.545 7.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
                         </svg>
+                        
                         <form id="search-form" action="https://www.google.com/search" method="GET" target="_self" class="search-form">
-                            <input type="text" id="search-input" name="q" class="search-input" placeholder="Hledat na Googlu..." autocomplete="off" required>
+                            <input type="text" id="search-input" name="q" class="search-input" placeholder="Hledat na Googlu..." autocomplete="off" required autofocus>
                             <button type="submit" class="search-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </button>
                             <div id="search-suggestions" class="search-suggestions"></div>
                         </form>
                     </div>
+
                     <div class="bookmarks-section">
                         <div class="bookmarks-header-row">
                             <span class="bookmarks-label">Oblíbené</span>
@@ -106,6 +137,7 @@
                         </div>
                         <div id="bookmarks-grid" class="bookmarks-grid"></div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -118,7 +150,7 @@
             <form id="add-server-form">
                 <input type="hidden" id="edit-original-url">
                 <input type="text" id="server-name" placeholder="Název" required>
-                <input type="url" id="server-url" placeholder="URL" required>
+                <input type="url" id="server-url" placeholder="URL (např. https://moje.domena)" required>
                 <div class="form-group-checkbox">
                     <input type="checkbox" id="server-cloudflare">
                     <label for="server-cloudflare">Server přes Cloudflare Tunnel</label>
@@ -140,11 +172,11 @@
         </div>
     </div>
 
-    <script src="script.js?v=12"></script>
+    <script src="script.js?v=16"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW chyba:', err));
+                navigator.serviceWorker.register('sw.js').catch(console.error);
             });
         }
     </script>
